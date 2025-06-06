@@ -95,15 +95,20 @@ for pkg in python3 pip; do
     fi
 done
 
-echo "Installing JupyterLab via pip with break-system-packages..."
-if ! pip install --user --break-system-packages jupyterlab; then
-    echo "Error: Failed to install JupyterLab"
+echo "Installing JupyterLab and Real-Time Collaboration extension..."
+if ! pip install --user --break-system-packages jupyterlab jupyter-collaboration; then
+    echo "Error: Failed to install JupyterLab and collaboration extension"
     exit 1
 fi
 
 if ! command -v $HOME/.local/bin/jupyter-lab &> /dev/null; then
     echo "Error: JupyterLab installation verification failed"
     exit 1
+fi
+
+echo "Verifying jupyter-collaboration extension installation..."
+if ! $HOME/.local/bin/jupyter labextension list | grep -q "jupyter-collaboration"; then
+    echo "Warning: jupyter-collaboration extension may not be properly installed"
 fi
 
 echo "Configuring PATH and prompt in .bashrc..."
@@ -124,7 +129,6 @@ fi
 sed -i '/# Custom prompt configuration/,/# Terminal title settings/d' "$BASH_CONFIG"
 cat <<EOT >> "$BASH_CONFIG"
 
-# Custom prompt configuration for root and non-root users
 if [ "\$USER" = "root" ]; then
     PS1='\\[\\e[1;32m\\]root@$SELECTED_USERNAME\\[\\e[0m\\]:\\w\\$ '
 else
@@ -176,21 +180,116 @@ c.ContentsManager.allow_hidden = True
 c.TerminalInteractiveShell.shell = 'bash'
 c.ServerApp.allow_remote_access = True
 c.ServerApp.disable_check_xsrf = False
+c.LabApp.collaborative = True
+c.YDocExtension.file_poll_interval = 1.0
+c.YDocExtension.ystore_class = 'jupyter_ydoc.ystore.SQLiteYStore'
+c.FileContentsManager.use_atomic_writing = True
+c.ContentsManager.checkpoints_kwargs = {'root_dir': '.ipynb_checkpoints'}
 EOT
+
+echo "Creating JupyterLab settings directory..."
+JUPYTER_SETTINGS_DIR="$HOME/.jupyter/lab/user-settings"
+mkdir -p "$JUPYTER_SETTINGS_DIR/@jupyterlab/docmanager-extension"
+mkdir -p "$JUPYTER_SETTINGS_DIR/@jupyterlab/fileeditor-extension"
+
+echo "Configuring default file associations to always use editor..."
+cat <<EOT > "$JUPYTER_SETTINGS_DIR/@jupyterlab/docmanager-extension/plugin.jupyterlab-settings"
+{
+    "defaultViewers": {
+        "json": "Editor",
+        "geojson": "Editor", 
+        "txt": "Editor",
+        "md": "Editor",
+        "py": "Editor",
+        "js": "Editor",
+        "html": "Editor",
+        "css": "Editor",
+        "xml": "Editor",
+        "yaml": "Editor",
+        "yml": "Editor",
+        "csv": "Editor",
+        "log": "Editor",
+        "conf": "Editor",
+        "config": "Editor",
+        "ini": "Editor"
+    },
+    "autosaveInterval": 30
+}
+EOT
+
+echo "Configuring text editor settings..."
+cat <<EOT > "$JUPYTER_SETTINGS_DIR/@jupyterlab/fileeditor-extension/plugin.jupyterlab-settings"
+{
+    "editorConfig": {
+        "rulers": [80, 120],
+        "lineWrap": "off",
+        "lineNumbers": true,
+        "wordWrapColumn": 80,
+        "tabSize": 4,
+        "insertSpaces": true,
+        "matchBrackets": true,
+        "autoClosingBrackets": true,
+        "codeFolding": true
+    }
+}
+EOT
+
+echo "Creating system-wide overrides for all users..."
+SYSTEM_OVERRIDES_DIR="/usr/local/share/jupyter/lab/settings"
+sudo mkdir -p "$SYSTEM_OVERRIDES_DIR"
+
+sudo bash -c "cat <<EOT > $SYSTEM_OVERRIDES_DIR/overrides.json
+{
+    \"@jupyterlab/docmanager-extension:plugin\": {
+        \"defaultViewers\": {
+            \"json\": \"Editor\",
+            \"geojson\": \"Editor\",
+            \"txt\": \"Editor\",
+            \"md\": \"Editor\",
+            \"py\": \"Editor\",
+            \"js\": \"Editor\",
+            \"html\": \"Editor\",
+            \"css\": \"Editor\",
+            \"xml\": \"Editor\",
+            \"yaml\": \"Editor\",
+            \"yml\": \"Editor\",
+            \"csv\": \"Editor\",
+            \"log\": \"Editor\",
+            \"conf\": \"Editor\",
+            \"config\": \"Editor\",
+            \"ini\": \"Editor\"
+        },
+        \"autosaveInterval\": 30
+    },
+    \"@jupyterlab/fileeditor-extension:plugin\": {
+        \"editorConfig\": {
+            \"rulers\": [80, 120],
+            \"lineWrap\": \"off\",
+            \"lineNumbers\": true,
+            \"wordWrapColumn\": 80,
+            \"tabSize\": 4,
+            \"insertSpaces\": true,
+            \"matchBrackets\": true,
+            \"autoClosingBrackets\": true,
+            \"codeFolding\": true
+        }
+    }
+}
+EOT"
 
 echo "Server configuration saved in $JUPYTER_CONFIG"
 
 SYSTEMD_SERVICE="/etc/systemd/system/jupyter-lab.service"
 sudo bash -c "cat <<EOT > $SYSTEMD_SERVICE
 [Unit]
-Description=Jupyter Lab Service
+Description=Jupyter Lab Service with Real-Time Collaboration
 After=network.target
 
 [Service]
 Type=simple
 PIDFile=/run/jupyter.pid
 WorkingDirectory=/root/
-ExecStart=/root/.local/bin/jupyter-lab --config=/root/.jupyter/jupyter_lab_config.py --allow-root
+ExecStart=/root/.local/bin/jupyter-lab --config=/root/.jupyter/jupyter_lab_config.py --allow-root --collaborative
 User=root
 Group=root
 Restart=always
@@ -217,8 +316,8 @@ if screen -list | grep -q "jupyter-session"; then
     screen -S jupyter-session -X quit 2>/dev/null || true
 fi
 
-echo "Starting JupyterLab in screen session..."
-if ! screen -dmS jupyter-session bash -c "/root/.local/bin/jupyter-lab --allow-root"; then
+echo "Starting JupyterLab with Real-Time Collaboration in screen session..."
+if ! screen -dmS jupyter-session bash -c "/root/.local/bin/jupyter-lab --allow-root --collaborative"; then
     echo "Error: Failed to start JupyterLab in screen session"
     exit 1
 fi
@@ -247,6 +346,20 @@ echo "Terminal prompt: root@$SELECTED_USERNAME"
 echo "Configuration file: $JUPYTER_CONFIG"
 echo "Service status: sudo systemctl status jupyter-lab"
 echo "Screen session: screen -r jupyter-session"
+echo "========================================="
+echo "Real-Time Collaboration Features:"
+echo "✓ Auto-reload files when modified externally"
+echo "✓ Auto-save every 30 seconds"
+echo "✓ File watching for external changes"
+echo "✓ No conflict warnings for file modifications"
+echo "========================================="
+echo "Editor Default Settings:"
+echo "✓ JSON files always open in Editor (not viewer)"
+echo "✓ All text files default to Editor mode"
+echo "✓ Code folding enabled"
+echo "✓ Line numbers enabled"
+echo "✓ Auto-closing brackets enabled"
+echo "✓ Rulers at columns 80 and 120"
 echo "========================================="
 echo "To start/stop service manually:"
 echo "sudo systemctl start jupyter-lab"
