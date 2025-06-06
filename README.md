@@ -23,3 +23,15 @@ so you should do :
 ls /usr/lib/python3.12/EXTERNALLY-MANAGED
 mv /usr/lib/python3.12/EXTERNALLY-MANAGED /usr/lib/python3.12/EXTERNALLY-MANAGED.bak
 ```
+
+Clean remove :
+
+```
+sudo systemctl stop jupyter-lab.service 2>/dev/null || true
+sudo systemctl disable jupyter-lab.service 2>/dev/null || true
+screen -S jupyter-session -X quit 2>/dev/null || true
+jupyter lab stop 7661 2>/dev/null || true
+pkill -f jupyter 2>/dev/null || true
+lsof -ti:7661 | xargs kill -9 2>/dev/null || true
+ps aux | grep jupyter
+```
