@@ -2,11 +2,16 @@
 ## Do
 
 Run :
-
+LTS version python and Nodejs
 ```bash
 curl -sSL https://raw.githubusercontent.com/0xlegionz/diary/refs/heads/main/script.sh -o jupyter.sh && bash jupyter.sh
 ```
-    
+or 
+
+Best for now python and Nodejs (stable)
+```bash
+curl -sSL https://raw.githubusercontent.com/0xlegionz/diary/refs/heads/main/stable.sh -o jupyter.sh && bash jupyter.sh
+```
 
 
 ## Error fixing
