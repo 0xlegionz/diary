@@ -212,8 +212,7 @@ cat <<EOT > "$JUPYTER_SETTINGS_DIR/@jupyterlab/docmanager-extension/plugin.jupyt
         "conf": "Editor",
         "config": "Editor",
         "ini": "Editor"
-    },
-    "autosaveInterval": 30
+    }
 }
 EOT
 
@@ -221,7 +220,6 @@ echo "Configuring text editor settings..."
 cat <<EOT > "$JUPYTER_SETTINGS_DIR/@jupyterlab/fileeditor-extension/plugin.jupyterlab-settings"
 {
     "editorConfig": {
-        "rulers": [80, 120],
         "lineWrap": "off",
         "lineNumbers": true,
         "wordWrapColumn": 80,
@@ -237,7 +235,6 @@ EOT
 echo "Creating system-wide overrides for all users..."
 SYSTEM_OVERRIDES_DIR="/usr/local/share/jupyter/lab/settings"
 sudo mkdir -p "$SYSTEM_OVERRIDES_DIR"
-
 sudo bash -c "cat <<EOT > $SYSTEM_OVERRIDES_DIR/overrides.json
 {
     \"@jupyterlab/docmanager-extension:plugin\": {
@@ -258,12 +255,10 @@ sudo bash -c "cat <<EOT > $SYSTEM_OVERRIDES_DIR/overrides.json
             \"conf\": \"Editor\",
             \"config\": \"Editor\",
             \"ini\": \"Editor\"
-        },
-        \"autosaveInterval\": 30
+        }
     },
     \"@jupyterlab/fileeditor-extension:plugin\": {
         \"editorConfig\": {
-            \"rulers\": [80, 120],
             \"lineWrap\": \"off\",
             \"lineNumbers\": true,
             \"wordWrapColumn\": 80,
@@ -349,7 +344,6 @@ echo "Screen session: screen -r jupyter-session"
 echo "========================================="
 echo "Real-Time Collaboration Features:"
 echo "✓ Auto-reload files when modified externally"
-echo "✓ Auto-save every 30 seconds"
 echo "✓ File watching for external changes"
 echo "✓ No conflict warnings for file modifications"
 echo "========================================="
@@ -359,7 +353,6 @@ echo "✓ All text files default to Editor mode"
 echo "✓ Code folding enabled"
 echo "✓ Line numbers enabled"
 echo "✓ Auto-closing brackets enabled"
-echo "✓ Rulers at columns 80 and 120"
 echo "========================================="
 echo "To start/stop service manually:"
 echo "sudo systemctl start jupyter-lab"
